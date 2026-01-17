@@ -5,6 +5,27 @@ app_description = "Custom attendance rules and validation"
 app_email = "Faizanahmed1295@gmail.com"
 app_license = "mit"
 
+
+
+doc_events = {
+    "Attendance": {
+        "validate": "attendance_custom_logic.attendance.attendance_validation.validate_attendance"
+    },
+    "Leave Application": {
+        "validate": "attendance_custom_logic.attendance_custom_logic.leave.validate_leave_application"
+    }
+}
+
+
+scheduler_events = {
+    "cron": {
+        "0 11 * * *": [
+            "attendance_custom_logic.attendance_custom_logic.absent_if_no_checkin.mark_absent_if_no_checkin"
+        ]
+    }
+}
+
+
 # Apps
 # ------------------
 
