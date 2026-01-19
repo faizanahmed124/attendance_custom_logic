@@ -7,14 +7,6 @@ app_license = "mit"
 
 
 
-doc_events = {
-    "Attendance": {
-        "validate": "attendance_custom_logic.attendance.attendance_validation.validate_attendance"
-    },
-    "Leave Application": {
-        "validate": "attendance_custom_logic.attendance_custom_logic.leave.validate_leave_application"
-    }
-}
 
 
 scheduler_events = {
@@ -24,6 +16,16 @@ scheduler_events = {
         ]
     }
 }
+
+doc_events = {
+    "Attendance": {
+        "validate": "attendance_custom_logic.attendance_custom_logic.attendance.validate_attendance"
+    },
+    "Leave Application": {
+        "validate": "attendance_custom_logic.attendance_custom_logic.leave.validate_leave_application"
+    }
+}
+
 
 
 # Apps

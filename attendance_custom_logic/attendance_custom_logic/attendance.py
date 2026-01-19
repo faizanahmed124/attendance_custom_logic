@@ -11,7 +11,7 @@ def validate_attendance(doc, method=None):
     allow_ot = frappe.db.get_value(
         "Employee",
         doc.employee,
-        "allow_overtime"
+        "custom_allow_overtime"
     )
 
     if not allow_ot:
@@ -88,7 +88,7 @@ def apply_early_exit_ot_rounding(doc):
     allow_ot = frappe.db.get_value(
         "Employee",
         doc.employee,
-        "allow_overtime"
+        "custom_allow_overtime"
     )
 
     if not allow_ot:
