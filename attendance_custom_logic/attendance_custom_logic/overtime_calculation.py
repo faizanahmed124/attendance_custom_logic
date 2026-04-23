@@ -1,22 +1,47 @@
 import frappe
 import math
 
+
+# =====================================================
+# DUTY HOURS SLAB LOCK FUNCTION (15 MINUTES)
+# =====================================================
+def lock_duty_hours_to_slab(doc):
+
+    duty_hours = frappe.db.get_value(
+        "Attendance", doc.name, "custom_duty_hours"
+    )
+
+    if not duty_hours:
+        return
+
+    total_minutes = int(float(duty_hours) * 60)
+    remainder = total_minutes % 60
+
+    # 15 minute slab
+    if remainder < 15:
+        slab_minutes = 0
+    elif remainder < 30:
+        slab_minutes = 15
+    elif remainder < 45:
+        slab_minutes = 30
+    else:
+        slab_minutes = 45
+
+    locked_minutes = (total_minutes // 60) * 60 + slab_minutes
+    locked_hours = locked_minutes / 60
+
+    frappe.db.set_value(
+        "Attendance",
+        doc.name,
+        "custom_duty_hours",
+        float(f"{locked_hours:.2f}")
+    )
+
+
+# =====================================================
+# MAIN FUNCTION
+# =====================================================
 def calculate_overtime(doc, method=None):
-    """
-    Duty hours & overtime logic:
-
-    NORMAL DAY
-    - working_hours < 8  → duty = working_hours
-    - working_hours >= 8 → duty = 8
-    - overtime only if allow_overtime = 1
-    - late minutes slab logic applied
-
-    HOLIDAY
-    - Permanent + Holiday + allow_overtime = 1
-        → pure working hours = overtime (rounded to 15 min)
-    - Holiday but overtime NOT allowed
-        → behaves like normal day (NO special overtime)
-    """
 
     # -------------------------
     # RESET VALUES
@@ -31,9 +56,11 @@ def calculate_overtime(doc, method=None):
     )
 
     if doc.status not in ("Present", "Half Day"):
+        lock_duty_hours_to_slab(doc)
         return
 
     if not doc.working_hours:
+        lock_duty_hours_to_slab(doc)
         return
 
     working_hours = float(doc.working_hours)
@@ -44,9 +71,11 @@ def calculate_overtime(doc, method=None):
     employment_type = frappe.db.get_value(
         "Employee", doc.employee, "employment_type"
     )
+
     holiday_list = frappe.db.get_value(
         "Employee", doc.employee, "holiday_list"
     )
+
     allow_overtime = frappe.db.get_value(
         "Employee", doc.employee, "custom_allow_overtime"
     )
@@ -55,6 +84,7 @@ def calculate_overtime(doc, method=None):
     # HOLIDAY SPECIAL CASE
     # -------------------------
     if employment_type == "Permanent" and holiday_list:
+
         is_holiday = frappe.db.exists(
             "Holiday",
             {
@@ -65,9 +95,8 @@ def calculate_overtime(doc, method=None):
 
         # ✅ Holiday + overtime allowed
         if is_holiday and doc.status == "Present" and allow_overtime:
-            total_minutes = int(working_hours * 60)
 
-            # round to nearest 15 minutes
+            total_minutes = int(working_hours * 60)
             rounded_minutes = 15 * round(total_minutes / 15)
             overtime_hours = rounded_minutes / 60
 
@@ -76,24 +105,27 @@ def calculate_overtime(doc, method=None):
                 doc.name,
                 {
                     "custom_duty_hours": 0,
-                    "custom_overtime": round(overtime_hours, 2)
+                    "custom_overtime": float(f"{overtime_hours:.2f}")
                 }
             )
+
+            lock_duty_hours_to_slab(doc)
             return
-        # ❌ Holiday but overtime NOT allowed
-        # → normal flow continues (no return)
 
     # -------------------------
     # DUTY HOURS LOGIC
     # -------------------------
     if working_hours < 8:
+
         frappe.db.set_value(
             "Attendance",
             doc.name,
             "custom_duty_hours",
             round(working_hours, 2)
         )
-        return  # ❗ no overtime possible
+
+        lock_duty_hours_to_slab(doc)
+        return
 
     # working_hours >= 8
     frappe.db.set_value(
@@ -107,23 +139,27 @@ def calculate_overtime(doc, method=None):
     # OVERTIME ELIGIBILITY
     # -------------------------
     if not allow_overtime or working_hours <= 8:
+        lock_duty_hours_to_slab(doc)
         return
 
     if not (doc.in_time and doc.out_time):
+        lock_duty_hours_to_slab(doc)
         return
 
     # -------------------------
     # OVERTIME CALCULATION
     # -------------------------
     time_diff = doc.out_time - doc.in_time
+
     total_minutes_worked = (
         time_diff.days * 24 * 60
         + time_diff.seconds // 60
     )
 
-    overtime_minutes = total_minutes_worked - 480  # 8 hours
+    overtime_minutes = total_minutes_worked - 480
 
     if overtime_minutes <= 0:
+        lock_duty_hours_to_slab(doc)
         return
 
     late_minutes = doc.custom_late_minutes or 0
@@ -151,5 +187,8 @@ def calculate_overtime(doc, method=None):
         "Attendance",
         doc.name,
         "custom_overtime",
-        round(overtime_hours, 2)
+        float(f"{overtime_hours:.2f}")
     )
+
+    # FINAL LOCK
+    lock_duty_hours_to_slab(doc)

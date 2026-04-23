@@ -1,11 +1,11 @@
 import frappe
-from frappe.utils import getdate
+from frappe.utils import getdate, add_days, now_datetime
 
 
-def mark_holiday_attendance(attendance_date=None):
+def mark_holiday_attendance():
 
-    if not attendance_date:
-        attendance_date = getdate()
+    # 🔹 Always check PREVIOUS DATE
+    attendance_date = add_days(getdate(), -1)
 
     employees = frappe.get_all(
         "Employee",
@@ -47,7 +47,7 @@ def mark_holiday_attendance(attendance_date=None):
             attendance.status = "Holiday"
 
             attendance.insert(ignore_permissions=True)
-            attendance.submit()   # 🔥 AUTO SUBMIT
+            attendance.submit()
 
         except Exception:
             frappe.log_error(
