@@ -11,23 +11,26 @@ app_license = "mit"
 scheduler_events = {
     "cron": {
         # Holiday attendance at 12:00 AM (recommended time)
-        "10 13 * * *": [
+        "10 14 * * *": [
             "attendance_custom_logic.attendance_custom_logic.holiday_logic.mark_holiday_attendance",
         ],
 
         # NIGHT SHIFT - Process early morning checkouts (6 AM - 8 AM)
-        "0 10 * * *": [  # Runs at 10 AM
+        "0 10 * * *": [
             "attendance_custom_logic.attendance_custom_logic.night_shift_logic.run_night_shift_attendance"
         ],
 
-        # SECOND RUN - For late checkouts or missed entries
-        "30 11 * * *": [  # Runs at 11 PM
+        "30 11 * * *": [
             "attendance_custom_logic.attendance_custom_logic.night_shift_logic.run_night_shift_attendance"
         ],
 
-        # Mark absent if no check-in (run at end of day)
         "0 13 * * * ": [
             "attendance_custom_logic.attendance_custom_logic.absent_if_no_checkin.mark_absent_if_no_checkin"
+        ],
+
+        # WEEKLY SANDWICH CHECK - Har Tuesday 2:00 AM ko chalega
+        "0 2 * * 2": [
+            "attendance_custom_logic.attendance_custom_logic.sandwich.weekly_sandwich_check"
         ],
     }
 }

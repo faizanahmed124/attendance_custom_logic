@@ -103,3 +103,49 @@ def apply_minimum_working_hours_rule(doc, method=None):
                 "custom_less_duty_hour": 0
             }
         )
+        # =====================================================
+# WEEKLY SANDWICH CHECK (Har Tuesday chalega)
+# Pichle Saturday aur Monday ki Absent attendance check
+# karega, aur beech ke Sunday holiday ko bhi Absent
+# mark karega agar dono taraf Absent mile.
+# =====================================================
+def weekly_sandwich_check():
+    from frappe.utils import add_days, getdate
+
+    today = getdate()
+    saturday_date = add_days(today, -3)   # Tuesday se 3 din pehle = Saturday
+    monday_date = add_days(today, -1)     # Tuesday se 1 din pehle = Monday
+
+    frappe.logger().info(
+        f"[Sandwich Weekly Check] Running for Saturday={saturday_date}, Monday={monday_date}"
+    )
+
+    # Monday ke Absent records dhoondhein — inhi se backward check hoga
+    monday_absent_records = frappe.get_all(
+        "Attendance",
+        filters={
+            "status": "Absent",
+            "docstatus": 1,
+            "attendance_date": monday_date
+        },
+        fields=["name", "employee"]
+    )
+
+    processed = 0
+
+    for rec in monday_absent_records:
+        doc = frappe.get_doc("Attendance", rec.name)
+        apply_sandwich_leave(doc)
+        processed += 1
+
+    frappe.db.commit()
+
+    frappe.logger().info(
+        f"[Sandwich Weekly Check] Done. Monday Absent records processed: {processed}"
+    )
+    
+#     manually testing ka lia console ma run karna hoga, ya phir frappe scheduler ke zariye Tuesday ko automatically run hoga.
+# import frappe
+# from attendance_custom_logic.attendance_custom_logic.sandwich import weekly_sandwich_check
+
+# weekly_sandwich_check()
