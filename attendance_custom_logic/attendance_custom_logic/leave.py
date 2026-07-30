@@ -8,7 +8,7 @@ def validate_leave_application(doc, method=None):
     if not doc.employee or not doc.from_date:
         return
 
-    hours = doc.hours
+    hours = getattr(doc, 'hours', 0)
     if not hours or hours <= 0:
         return
 

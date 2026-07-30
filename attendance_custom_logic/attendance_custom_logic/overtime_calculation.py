@@ -36,6 +36,19 @@ def lock_duty_hours_to_slab(doc):
         "custom_duty_hours",
         float(f"{locked_hours:.2f}")
     )
+    standard_hours = 8.0
+
+    if 0 < locked_hours < standard_hours:
+        less_duty = round(standard_hours - locked_hours, 2)
+    else:
+        less_duty = 0.0
+
+    frappe.db.set_value(
+        "Attendance",
+        doc.name,
+        "custom_less_duty_hour",
+        less_duty
+    )
 
 
 # =====================================================
@@ -83,7 +96,7 @@ def calculate_overtime(doc, method=None):
     # -------------------------
     # HOLIDAY SPECIAL CASE
     # -------------------------
-    if employment_type == "Permanent" and holiday_list:
+    if employment_type and employment_type.lower() == "permanent" and holiday_list:
 
         is_holiday = frappe.db.exists(
             "Holiday",
