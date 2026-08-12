@@ -11,7 +11,7 @@ app_license = "mit"
 scheduler_events = {
     "cron": {
         # Holiday attendance at 12:00 AM (recommended time)
-        "10 14 * * *": [
+        "10 13 * * *": [
             "attendance_custom_logic.attendance_custom_logic.holiday_logic.mark_holiday_attendance",
         ],
 
@@ -24,7 +24,7 @@ scheduler_events = {
             "attendance_custom_logic.attendance_custom_logic.night_shift_logic.run_night_shift_attendance"
         ],
 
-        "0 13 * * * ": [
+        "0 14 * * *": [
             "attendance_custom_logic.attendance_custom_logic.absent_if_no_checkin.mark_absent_if_no_checkin"
         ],
 
