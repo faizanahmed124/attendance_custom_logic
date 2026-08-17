@@ -10,22 +10,33 @@ app_license = "mit"
 # -------------------------
 scheduler_events = {
     "cron": {
-        # Holiday attendance at 12:00 AM (recommended time)
-        "10 13 * * *": [
+        # NIGHT SHIFT - Process early morning checkouts
+        "0 9 * * *": [
+            "attendance_custom_logic.attendance_custom_logic.night_shift_logic.run_night_shift_attendance"
+        ],
+
+        "30 9 * * *": [
+            "attendance_custom_logic.attendance_custom_logic.night_shift_logic.run_night_shift_attendance"
+        ],
+
+        # Holiday attendance
+        "0 10 * * *": [
             "attendance_custom_logic.attendance_custom_logic.holiday_logic.mark_holiday_attendance",
         ],
 
-        # NIGHT SHIFT - Process early morning checkouts (6 AM - 8 AM)
-        "0 10 * * *": [
-            "attendance_custom_logic.attendance_custom_logic.night_shift_logic.run_night_shift_attendance"
-        ],
-
-        "30 11 * * *": [
-            "attendance_custom_logic.attendance_custom_logic.night_shift_logic.run_night_shift_attendance"
-        ],
-
-        "0 14 * * *": [
+        # Absent if no check-in
+        "15 10 * * *": [
             "attendance_custom_logic.attendance_custom_logic.absent_if_no_checkin.mark_absent_if_no_checkin"
+        ],
+
+        # Remove duplicate attendance (saari jobs ke baad)
+        "30 10 * * *": [
+            "attendance_custom_logic.attendance_custom_logic.duplicate_inactive_attendance.remove_duplicate_attendance"
+        ],
+
+        # Mark Absent attendance for Inactive employees
+        "45 10 * * *": [
+            "attendance_custom_logic.attendance_custom_logic.duplicate_inactive_attendance.mark_inactive_employee_attendance"
         ],
 
         # WEEKLY SANDWICH CHECK - Har Tuesday 2:00 AM ko chalega
