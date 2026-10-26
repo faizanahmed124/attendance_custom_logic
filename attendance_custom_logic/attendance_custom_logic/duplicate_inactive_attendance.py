@@ -1,20 +1,27 @@
 import frappe
-from frappe.utils import nowdate
+from frappe.utils import nowdate, getdate, add_days
 
 
-def remove_duplicate_attendance():
+STATUS_PRIORITY = {"Present": 2, "Half Day": 1, "Work From Home": 1}
+
+
+def remove_duplicate_attendance(date=None):
     """
     Logic 1:
     Saari attendance jobs chalne ke baad check karo ke kisi employee ki
-    same date par multiple (duplicate) attendance to nahi (alag alag shifts ki wajah se).
-    Priority:
-        - Agar ek Present aur ek Absent hai -> Absent wali delete karo, Present rakho.
-        - Agar dono Absent hain -> koi bhi ek delete kardo.
-        - Agar dono/sab Present hain -> pehli wali rakho, baaki delete.
+    same date par multiple (duplicate) attendance to nahi (alag alag shifts ki wajah se,
+    jaise Shift A mein aaya aur Shift B mein galti se check-in ho gaya).
+    Priority (jo rakhni hai):
+        1. Present
+        2. Half Day / Work From Home
+        3. Baaki (Absent, On Leave ...)
+        Same priority mein zyada working hours wali, phir pehle bani hui.
+    Baaki sab delete.
     """
-    date = nowdate()
+    # Baaki jobs (absent / holiday) bhi kal ki date par chalti hain
+    date = getdate(date) if date else add_days(getdate(), -1)
 
-    # Un employees ki list nikalo jinki aaj ke date ki 1 se zyada attendance hai
+    # Un employees ki list nikalo jinki is date ki 1 se zyada attendance hai
     duplicates = frappe.db.sql("""
         SELECT employee, COUNT(name) as cnt
         FROM `tabAttendance`
@@ -34,24 +41,19 @@ def remove_duplicate_attendance():
                 "attendance_date": date,
                 "docstatus": ["<", 2],
             },
-            fields=["name", "status", "shift", "docstatus"],
+            fields=["name", "status", "shift", "docstatus", "working_hours"],
             order_by="creation asc",
         )
 
         if len(records) <= 1:
             continue
 
-        present_records = [r for r in records if r.status == "Present"]
-        absent_records = [r for r in records if r.status == "Absent"]
-
-        if present_records:
-            # Kam se kam ek Present hai -> usi ko rakho, baaki (mostly Absent) delete karo
-            keep = present_records[0]
-            to_delete = [r for r in records if r.name != keep.name]
-        else:
-            # Sab Absent hain (ya koi aur status) -> pehli rakho, baaki delete
-            keep = records[0]
-            to_delete = records[1:]
+        # records creation asc hain, max barabari par pehli wali deta hai
+        keep = max(
+            records,
+            key=lambda r: (STATUS_PRIORITY.get(r.status, 0), r.working_hours or 0),
+        )
+        to_delete = [r for r in records if r.name != keep.name]
 
         for rec in to_delete:
             try:

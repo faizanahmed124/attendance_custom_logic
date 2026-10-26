@@ -7,6 +7,8 @@ from frappe.utils import getdate, add_days
 # Agar holiday se 1 din pehle Absent aur holiday ke
 # 1 din baad bhi Absent, to darmiyan wale holiday
 # din(s) bhi Absent mark honge.
+# Lekin agar banda holiday wale din aaya tha to sandwich
+# nahi lagega.
 # =====================================================
 def apply_sandwich_leave(doc, method=None):
 
@@ -41,6 +43,10 @@ def check_and_mark_sandwich(employee, base_date, holiday_list, direction):
     if not holiday_dates:
         return
 
+    # Agar banda kisi bhi holiday wale din aaya tha to sandwich nahi lagega
+    if any(came_on_holiday(employee, hdate) for hdate in holiday_dates):
+        return
+
     # cursor ab holiday block ke turant baad wala din hai
     other_side_status = frappe.db.get_value(
         "Attendance",
@@ -51,6 +57,28 @@ def check_and_mark_sandwich(employee, base_date, holiday_list, direction):
     if other_side_status == "Absent":
         for hdate in holiday_dates:
             mark_day_absent(employee, hdate)
+
+
+def came_on_holiday(employee, date):
+    status = frappe.db.get_value(
+        "Attendance",
+        {"employee": employee, "attendance_date": date, "docstatus": 1},
+        "status"
+    )
+
+    # Attendance bani hui hai to usi ka status maan lo
+    # (minimum hours rule se Absent hua to "aaya" nahi maana jayega)
+    if status:
+        return status != "Absent"
+
+    # Attendance abhi nahi bani, to us din ki check-in dekho
+    return bool(frappe.db.exists(
+        "Employee Checkin",
+        {
+            "employee": employee,
+            "time": ["between", [f"{date} 00:00:00", f"{date} 23:59:59"]]
+        }
+    ))
 
 
 def mark_day_absent(employee, date):
@@ -93,16 +121,21 @@ def apply_minimum_working_hours_rule(doc, method=None):
     min_hours = 2 if allow_overtime else 4
 
     if working_hours < min_hours:
-        frappe.db.set_value(
-            "Attendance",
-            doc.name,
-            {
-                "status": "Absent",
-                "custom_duty_hours": 0,
-                "custom_overtime": 0,
-                "custom_less_duty_hour": 0
-            }
-        )
+        values = {
+            "status": "Absent",
+            "working_hours": 0,
+            "late_entry": 0,
+            "early_exit": 0,
+            "custom_duty_hours": 0,
+            "custom_overtime": 0,
+            "custom_less_duty_hour": 0
+        }
+        frappe.db.set_value("Attendance", doc.name, values)
+
+        # In-memory doc bhi update karo, warna agla on_submit hook
+        # (calculate_overtime) purane working_hours se duty/overtime
+        # dobara calculate kar dega
+        doc.update(values)
         # =====================================================
 # WEEKLY SANDWICH CHECK (Har Tuesday chalega)
 # Pichle Saturday aur Monday ki Absent attendance check
