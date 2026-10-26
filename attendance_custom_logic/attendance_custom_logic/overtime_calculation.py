@@ -5,6 +5,7 @@ import math
 # =====================================================
 # DUTY HOURS SLAB LOCK FUNCTION (15 MINUTES)
 # =====================================================
+
 def lock_duty_hours_to_slab(doc):
 
     duty_hours = frappe.db.get_value(
@@ -176,6 +177,11 @@ def calculate_overtime(doc, method=None):
         return
 
     late_minutes = doc.custom_late_minutes or 0
+    
+    frappe.log_error(
+    f"{doc.name}: worked={total_minutes_worked}, ot={overtime_minutes}, late={late_minutes}",
+    "OT Debug"
+)
 
     # -------------------------
     # SLAB LOGIC (UNCHANGED)
